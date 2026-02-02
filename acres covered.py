@@ -1,114 +1,80 @@
 import streamlit as st
 
-st.set_page_config(
-    page_title="Agri Drone Area Coverage (Turn Loss Model)",
-    layout="centered"
-)
-
+st.set_page_config("Agri Drone Area (Turn Loss)", layout="centered")
 st.title("🚁 Agri Drone Area Coverage Calculator")
-st.markdown("Slider **or** type exact values — both stay synchronized")
 
-# ---------------- Helper function ----------------
+# ---------- Sync helper ----------
 
-def synced_input(label, key, min_val, max_val, default, step, fmt=None):
-    col1, col2 = st.columns([1, 1])
+def sync_from_num(key):
+    st.session_state[f"{key}_slider"] = st.session_state[f"{key}_num"]
 
-    with col1:
-        num = st.number_input(
+def sync_from_slider(key):
+    st.session_state[f"{key}_num"] = st.session_state[f"{key}_slider"]
+
+def synced_input(label, key, minv, maxv, default, step, fmt=None):
+    if f"{key}_num" not in st.session_state:
+        st.session_state[f"{key}_num"] = default
+        st.session_state[f"{key}_slider"] = default
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        st.number_input(
             f"{label} (Type)",
-            min_value=min_val,
-            max_value=max_val,
-            value=st.session_state.get(key, default),
+            min_value=minv,
+            max_value=maxv,
             step=step,
             format=fmt,
-            key=f"{key}_num"
+            key=f"{key}_num",
+            on_change=sync_from_num,
+            args=(key,)
         )
 
-    with col2:
-        slider = st.slider(
+    with c2:
+        st.slider(
             f"{label} (Slide)",
-            min_value=min_val,
-            max_value=max_val,
-            value=num,
+            min_value=minv,
+            max_value=maxv,
             step=step,
-            key=f"{key}_slider"
+            key=f"{key}_slider",
+            on_change=sync_from_slider,
+            args=(key,)
         )
 
-    # Sync logic
-    st.session_state[key] = slider
+    return st.session_state[f"{key}_num"]
 
-    return slider
+# ---------- Inputs ----------
 
-# ---------------- Inputs ----------------
-
-speed = synced_input(
-    "Drone Speed (m/s)", "speed",
-    0.5, 15.0, 5.0, 0.1
-)
-
-spray_width = synced_input(
-    "Spray Width (m)", "spray_width",
-    1.0, 10.0, 5.5, 0.1
-)
-
-pump_discharge = synced_input(
-    "Pump Discharge (L/min)", "pump",
-    0.5, 10.0, 3.33, 0.01
-)
-
-tank_capacity = synced_input(
-    "Tank Capacity (L)", "tank",
-    1.0, 50.0, 10.0, 0.5
-)
-
-st.markdown("---")
+speed = synced_input("Speed (m/s)", "speed", 0.5, 15.0, 5.0, 0.1)
+width = synced_input("Spray Width (m)", "width", 1.0, 10.0, 5.5, 0.1)
+flow = synced_input("Flow Rate (L/min)", "flow", 0.5, 10.0, 3.13, 0.01)
+tank = synced_input("Tank Capacity (L)", "tank", 1.0, 50.0, 10.0, 0.5)
 
 eta_turn = synced_input(
-    "η_turn (Per-Turn Efficiency)", "eta",
-    0.9000, 1.0000, 0.9868, 0.0001,
-    fmt="%.4f"
+    "η_turn (per turn)", "eta", 0.90, 1.00, 0.9850, 0.0001, "%.4f"
 )
 
-num_turns = synced_input(
-    "Number of Turns", "turns",
-    0, 50, 12, 1
-)
+turns = int(synced_input("Number of Turns", "turns", 0, 50, 12, 1))
 
-# ---------------- Calculations ----------------
+# ---------- Calculations ----------
 
-area_rate = speed * spray_width          # m²/s
-flow_rate = pump_discharge / 60          # L/s
+area_rate = speed * width
+flow_rate = flow / 60
 
 if area_rate > 0:
-    app_rate = flow_rate / area_rate     # L/m²
-    litres_per_acre = app_rate * 4047
-    ideal_acres = tank_capacity / litres_per_acre
+    lpm2 = flow_rate / area_rate
+    lpa = lpm2 * 4047
+    ideal_area = tank / lpa
 else:
-    ideal_acres = 0
+    ideal_area = 0
 
-turn_efficiency_total = eta_turn ** int(num_turns)
-real_acres = ideal_acres * turn_efficiency_total
+real_area = ideal_area * (eta_turn ** turns)
 
-# ---------------- Output ----------------
+# ---------- Output ----------
 
 st.markdown("---")
-st.subheader("📊 Results")
+st.metric("Ideal Area (acres)", f"{ideal_area:.3f}")
+st.metric("Real Area (acres)", f"{real_area:.3f}")
 
-st.metric(
-    "Ideal Acres (No Turn Loss)",
-    f"{ideal_acres:.3f} acres"
-)
-
-st.metric(
-    "Real Acres (With Turn Loss)",
-    f"{real_acres:.3f} acres"
-)
-
-loss_pct = (1 - turn_efficiency_total) * 100
-
-st.info(
-    f"Total turn loss: **{loss_pct:.2f}%** "
-    f"over **{int(num_turns)} turns**"
-)
-
-st.caption("Real Acres = Ideal Acres × (η_turn)ⁿ")
+loss = (1 - eta_turn ** turns) * 100
+st.info(f"Total turn loss: **{loss:.2f}%** over {turns} turns")
