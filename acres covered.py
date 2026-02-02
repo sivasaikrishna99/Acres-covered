@@ -1,9 +1,10 @@
 import streamlit as st
 
-st.set_page_config("Agri Drone Area Coverage", layout="centered")
-st.title("🚁 Agri Drone Area Coverage Calculator (Turn-Time Model)")
+st.set_page_config("Agri Drone Area (Turn Loss)", layout="centered")
+st.title("🚁 Agri Drone Area Coverage Calculator")
 
-# ----------------- Helper for synced slider + type input -----------------
+# ---------- Sync helper ----------
+
 def sync_from_num(key):
     st.session_state[f"{key}_slider"] = st.session_state[f"{key}_num"]
 
@@ -15,14 +16,13 @@ def synced_input(label, key, minv, maxv, default, step, fmt=None):
         st.session_state[f"{key}_num"] = default
         st.session_state[f"{key}_slider"] = default
 
-    col1, col2 = st.columns([1,1])
+    c1, c2 = st.columns(2)
 
-    with col1:
+    with c1:
         st.number_input(
             f"{label} (Type)",
             min_value=minv,
             max_value=maxv,
-            value=st.session_state[f"{key}_num"],
             step=step,
             format=fmt,
             key=f"{key}_num",
@@ -30,12 +30,11 @@ def synced_input(label, key, minv, maxv, default, step, fmt=None):
             args=(key,)
         )
 
-    with col2:
+    with c2:
         st.slider(
             f"{label} (Slide)",
             min_value=minv,
             max_value=maxv,
-            value=st.session_state[f"{key}_slider"],
             step=step,
             key=f"{key}_slider",
             on_change=sync_from_slider,
@@ -44,42 +43,38 @@ def synced_input(label, key, minv, maxv, default, step, fmt=None):
 
     return st.session_state[f"{key}_num"]
 
-# ----------------- Inputs -----------------
-speed = synced_input("Drone Speed (m/s)", "speed", 0.5, 15.0, 5.0, 0.1)
+# ---------- Inputs ----------
+
+speed = synced_input("Speed (m/s)", "speed", 0.5, 15.0, 5.0, 0.1)
 width = synced_input("Spray Width (m)", "width", 1.0, 10.0, 5.5, 0.1)
 flow = synced_input("Flow Rate (L/min)", "flow", 0.5, 10.0, 3.13, 0.01)
 tank = synced_input("Tank Capacity (L)", "tank", 1.0, 50.0, 10.0, 0.5)
 
-turn_duration = synced_input("Turn Duration per Turn (s)", "turn_dur", 0.5, 20.0, 3.0, 0.1)
+eta_turn = synced_input(
+    "η_turn (per turn)", "eta", 0.90, 1.00, 0.9850, 0.0001, "%.4f"
+)
+
 turns = int(synced_input("Number of Turns", "turns", 0, 50, 12, 1))
 
-# ----------------- Calculations -----------------
-area_rate = speed * width                # m²/s
-flow_rate = flow / 60                    # L/s
+# ---------- Calculations ----------
+
+area_rate = speed * width
+flow_rate = flow / 60
 
 if area_rate > 0:
-    app_rate = flow_rate / area_rate    # L/m²/s
-    lpa = app_rate * 4047               # L/acre
-    ideal_acres = tank / lpa
+    lpm2 = flow_rate / area_rate
+    lpa = lpm2 * 4047
+    ideal_area = tank / lpa
 else:
-    ideal_acres = 0
+    ideal_area = 0
 
-# Total spray time (s)
-total_spray_time = tank / flow_rate
+real_area = ideal_area * (eta_turn ** turns)
 
-# Fraction of mission lost to turns
-f_turn = (turn_duration * turns) / total_spray_time
-f_turn = min(f_turn, 1.0)  # Cap at 100%
+# ---------- Output ----------
 
-real_acres = ideal_acres * (1 - f_turn)
-
-# ----------------- Output -----------------
 st.markdown("---")
-st.subheader("📊 Results")
+st.metric("Ideal Area (acres)", f"{ideal_area:.3f}")
+st.metric("Real Area (acres)", f"{real_area:.3f}")
 
-st.metric("Ideal Area (acres)", f"{ideal_acres:.3f}")
-st.metric("Real Area (acres)", f"{real_acres:.3f}")
-
-st.info(f"Fraction of mission lost to turns: **{f_turn*100:.2f}%**")
-st.caption("Real Acres = Ideal Acres × (1 - Fraction of Mission Lost to Turns)")
-
+loss = (1 - eta_turn ** turns) * 100
+st.info(f"Total turn loss: **{loss:.2f}%** over {turns} turns")
