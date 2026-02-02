@@ -1,5 +1,4 @@
 import streamlit as st
-import math
 
 st.set_page_config(
     page_title="Agri Drone Area Coverage (Turn Loss Model)",
@@ -7,74 +6,87 @@ st.set_page_config(
 )
 
 st.title("🚁 Agri Drone Area Coverage Calculator")
-st.markdown("Includes **per-turn efficiency loss**")
+st.markdown("Slider **or** type exact values — both stay synchronized")
+
+# ---------------- Helper function ----------------
+
+def synced_input(label, key, min_val, max_val, default, step, fmt=None):
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        num = st.number_input(
+            f"{label} (Type)",
+            min_value=min_val,
+            max_value=max_val,
+            value=st.session_state.get(key, default),
+            step=step,
+            format=fmt,
+            key=f"{key}_num"
+        )
+
+    with col2:
+        slider = st.slider(
+            f"{label} (Slide)",
+            min_value=min_val,
+            max_value=max_val,
+            value=num,
+            step=step,
+            key=f"{key}_slider"
+        )
+
+    # Sync logic
+    st.session_state[key] = slider
+
+    return slider
 
 # ---------------- Inputs ----------------
 
-speed = st.slider(
-    "Drone Speed (m/s)",
-    min_value=0.5,
-    max_value=15.0,
-    value=5.0,
-    step=0.1
+speed = synced_input(
+    "Drone Speed (m/s)", "speed",
+    0.5, 15.0, 5.0, 0.1
 )
 
-spray_width = st.slider(
-    "Spray Width (m)",
-    min_value=1.0,
-    max_value=10.0,
-    value=5.5,
-    step=0.1
+spray_width = synced_input(
+    "Spray Width (m)", "spray_width",
+    1.0, 10.0, 5.5, 0.1
 )
 
-pump_discharge = st.slider(
-    "Pump Discharge (L/min)",
-    min_value=0.5,
-    max_value=10.0,
-    value=3.13,
-    step=0.01
+pump_discharge = synced_input(
+    "Pump Discharge (L/min)", "pump",
+    0.5, 10.0, 3.33, 0.01
 )
 
-tank_capacity = st.slider(
-    "Tank Capacity (L)",
-    min_value=1.0,
-    max_value=50.0,
-    value=10.0,
-    step=0.5
+tank_capacity = synced_input(
+    "Tank Capacity (L)", "tank",
+    1.0, 50.0, 10.0, 0.5
 )
 
 st.markdown("---")
 
-eta_turn = st.slider(
-    "η_turn (Per Turn Efficiency)",
-    min_value=0.90,
-    max_value=1.00,
-    value=0.9835,
-    step=0.0005,
-    help="Efficiency retained per turn (e.g. 0.9835 = 1.65% loss per turn)"
+eta_turn = synced_input(
+    "η_turn (Per-Turn Efficiency)", "eta",
+    0.9000, 1.0000, 0.9868, 0.0001,
+    fmt="%.4f"
 )
 
-num_turns = st.slider(
-    "Number of Turns",
-    min_value=0,
-    max_value=50,
-    value=12,
-    step=1
+num_turns = synced_input(
+    "Number of Turns", "turns",
+    0, 50, 12, 1
 )
 
 # ---------------- Calculations ----------------
 
-area_rate_m2_per_s = speed * spray_width
-flow_rate_l_per_s = pump_discharge / 60
+area_rate = speed * spray_width          # m²/s
+flow_rate = pump_discharge / 60          # L/s
 
-if area_rate_m2_per_s > 0:
-    application_rate_l_per_m2 = flow_rate_l_per_s / area_rate_m2_per_s
-    litres_per_acre = application_rate_l_per_m2 * 4047
+if area_rate > 0:
+    app_rate = flow_rate / area_rate     # L/m²
+    litres_per_acre = app_rate * 4047
     ideal_acres = tank_capacity / litres_per_acre
 else:
     ideal_acres = 0
 
-turn_efficiency_total = eta_turn ** num_turns
+turn_efficiency_total = eta_turn ** int(num_turns)
 real_acres = ideal_acres * turn_efficiency_total
 
 # ---------------- Output ----------------
@@ -84,21 +96,19 @@ st.subheader("📊 Results")
 
 st.metric(
     "Ideal Acres (No Turn Loss)",
-    f"{ideal_acres:.2f} acres"
+    f"{ideal_acres:.3f} acres"
 )
 
 st.metric(
     "Real Acres (With Turn Loss)",
-    f"{real_acres:.2f} acres"
+    f"{real_acres:.3f} acres"
 )
 
-st.caption("Formula: Real Acres = Ideal Acres × (η_turn)ⁿ")
-
-# ---------------- Insights ----------------
-
-loss_percent = (1 - turn_efficiency_total) * 100
+loss_pct = (1 - turn_efficiency_total) * 100
 
 st.info(
-    f"Total turn-related loss: **{loss_percent:.1f}%** "
-    f"over **{num_turns} turns**"
+    f"Total turn loss: **{loss_pct:.2f}%** "
+    f"over **{int(num_turns)} turns**"
 )
+
+st.caption("Real Acres = Ideal Acres × (η_turn)ⁿ")
