@@ -21,8 +21,15 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ---------- INPUT HELPERS ----------
-def synced_slider_input(label, key, minv, maxv, step, fmt=None):
+# ---------- SYNC FUNCTION ----------
+def sync_from_slider(name):
+    st.session_state[name] = st.session_state[f"{name}_slider"]
+
+def sync_from_input(name):
+    st.session_state[name] = st.session_state[f"{name}_input"]
+
+# ---------- INPUT FUNCTION ----------
+def synced_input(label, name, minv, maxv, step, fmt=None):
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -31,7 +38,10 @@ def synced_slider_input(label, key, minv, maxv, step, fmt=None):
             min_value=minv,
             max_value=maxv,
             step=step,
-            key=key,
+            key=f"{name}_slider",
+            value=st.session_state[name],
+            on_change=sync_from_slider,
+            args=(name,),
         )
 
     with col2:
@@ -41,17 +51,20 @@ def synced_slider_input(label, key, minv, maxv, step, fmt=None):
             max_value=maxv,
             step=step,
             format=fmt,
-            key=key,
+            key=f"{name}_input",
+            value=st.session_state[name],
+            on_change=sync_from_input,
+            args=(name,),
         )
 
 # ---------- INPUTS ----------
-synced_slider_input("Speed (m/s)", "speed", 0.5, 15.0, 0.1)
-synced_slider_input("Spray width (m)", "width", 0.5, 15.0, 0.1)
-synced_slider_input("Flow rate (L/min)", "flow", 0.1, 20.0, 0.01, "%.3f")
-synced_slider_input("Tank capacity (L)", "tank", 1.0, 50.0, 0.5)
-synced_slider_input("Number of turns", "turns", 0, 200, 1)
-synced_slider_input("kₛ (speed loss constant)", "ks", 0.0, 0.05, 0.0001, "%.4f")
-synced_slider_input("kᵥ (width loss constant)", "kw", 0.0, 0.05, 0.0001, "%.4f")
+synced_input("Speed (m/s)", "speed", 0.5, 15.0, 0.1)
+synced_input("Spray width (m)", "width", 0.5, 15.0, 0.1)
+synced_input("Flow rate (L/min)", "flow", 0.1, 20.0, 0.01, "%.3f")
+synced_input("Tank capacity (L)", "tank", 1.0, 50.0, 0.5)
+synced_input("Number of turns", "turns", 0, 200, 1)
+synced_input("kₛ (speed loss constant)", "ks", 0.0, 0.05, 0.0001, "%.4f")
+synced_input("kᵥ (width loss constant)", "kw", 0.0, 0.05, 0.0001, "%.4f")
 
 st.divider()
 
@@ -74,7 +87,7 @@ area_ideal = (speed * width * t_spray) / 4046.86
 eta_speed = max(0.0, 1 - ks * (turns / speed))
 eta_width = max(0.0, 1 - kw * (turns / width))
 
-# Actual area
+# Final area
 area_real = area_ideal * eta_speed * eta_width
 
 # ---------- OUTPUT ----------
