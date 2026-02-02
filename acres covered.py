@@ -1,80 +1,112 @@
 import streamlit as st
 
-st.set_page_config("Agri Drone Area (Turn Loss)", layout="centered")
-st.title("🚁 Agri Drone Area Coverage Calculator")
+st.set_page_config(page_title="Agri Drone Area Calculator", layout="centered")
 
-# ---------- Sync helper ----------
+st.title("🚁 Agricultural Drone Area Coverage Calculator")
+st.caption("Two-efficiency model: speed loss + width loss")
 
-def sync_from_num(key):
-    st.session_state[f"{key}_slider"] = st.session_state[f"{key}_num"]
+st.divider()
 
-def sync_from_slider(key):
-    st.session_state[f"{key}_num"] = st.session_state[f"{key}_slider"]
+# ----------- INPUTS -----------
+col1, col2 = st.columns(2)
 
-def synced_input(label, key, minv, maxv, default, step, fmt=None):
-    if f"{key}_num" not in st.session_state:
-        st.session_state[f"{key}_num"] = default
-        st.session_state[f"{key}_slider"] = default
+with col1:
+    speed = st.number_input(
+        "Drone speed (m/s)",
+        min_value=0.5,
+        max_value=15.0,
+        value=5.0,
+        step=0.1,
+    )
 
-    c1, c2 = st.columns(2)
+    spray_width = st.number_input(
+        "Spray width (m)",
+        min_value=0.5,
+        max_value=15.0,
+        value=5.5,
+        step=0.1,
+    )
 
-    with c1:
-        st.number_input(
-            f"{label} (Type)",
-            min_value=minv,
-            max_value=maxv,
-            step=step,
-            format=fmt,
-            key=f"{key}_num",
-            on_change=sync_from_num,
-            args=(key,)
-        )
+    flow_rate = st.number_input(
+        "Flow rate (L/min)",
+        min_value=0.1,
+        max_value=20.0,
+        value=3.0,
+        step=0.01,
+        format="%.3f",
+    )
 
-    with c2:
-        st.slider(
-            f"{label} (Slide)",
-            min_value=minv,
-            max_value=maxv,
-            step=step,
-            key=f"{key}_slider",
-            on_change=sync_from_slider,
-            args=(key,)
-        )
+with col2:
+    tank_capacity = st.number_input(
+        "Tank capacity (L)",
+        min_value=1.0,
+        max_value=50.0,
+        value=10.0,
+        step=0.5,
+    )
 
-    return st.session_state[f"{key}_num"]
+    turns = st.number_input(
+        "Number of turns",
+        min_value=0,
+        max_value=200,
+        value=12,
+        step=1,
+    )
 
-# ---------- Inputs ----------
+    ks = st.number_input(
+        "kₛ (speed loss constant)",
+        min_value=0.0,
+        max_value=0.05,
+        value=0.006,
+        step=0.0001,
+        format="%.4f",
+    )
 
-speed = synced_input("Speed (m/s)", "speed", 0.5, 15.0, 5.0, 0.1)
-width = synced_input("Spray Width (m)", "width", 1.0, 10.0, 5.5, 0.1)
-flow = synced_input("Flow Rate (L/min)", "flow", 0.5, 10.0, 3.13, 0.01)
-tank = synced_input("Tank Capacity (L)", "tank", 1.0, 50.0, 10.0, 0.5)
+    kw = st.number_input(
+        "kᵥ (width loss constant)",
+        min_value=0.0,
+        max_value=0.05,
+        value=0.004,
+        step=0.0001,
+        format="%.4f",
+    )
 
-eta_turn = synced_input(
-    "η_turn (per turn)", "eta", 0.90, 1.00, 0.9850, 0.0001, "%.4f"
+st.divider()
+
+# ----------- CALCULATIONS -----------
+
+# Spray time (seconds)
+t_spray = (tank_capacity / flow_rate) * 60
+
+# Ideal area (acres)
+area_ideal = (speed * spray_width * t_spray) / 4046.86
+
+# Efficiencies
+eta_speed = max(0.0, 1 - ks * (turns / speed))
+eta_width = max(0.0, 1 - kw * (turns / spray_width))
+
+# Final area
+area_real = area_ideal * eta_speed * eta_width
+
+# ----------- OUTPUTS -----------
+
+st.subheader("📊 Results")
+
+col3, col4 = st.columns(2)
+
+with col3:
+    st.metric("Ideal Area (acre)", f"{area_ideal:.4f}")
+    st.metric("η_speed", f"{eta_speed:.4f}")
+
+with col4:
+    st.metric("Actual Area (acre)", f"{area_real:.4f}")
+    st.metric("η_width", f"{eta_width:.4f}")
+
+st.divider()
+
+st.caption(
+    "Notes:\n"
+    "- η_speed captures accel/decel losses\n"
+    "- η_width captures geometric / edge losses\n"
+    "- kₛ and kᵥ are drone-specific constants"
 )
-
-turns = int(synced_input("Number of Turns", "turns", 0, 50, 12, 1))
-
-# ---------- Calculations ----------
-
-area_rate = speed * width
-flow_rate = flow / 60
-
-if area_rate > 0:
-    lpm2 = flow_rate / area_rate
-    lpa = lpm2 * 4047
-    ideal_area = tank / lpa
-else:
-    ideal_area = 0
-
-real_area = ideal_area * (eta_turn ** turns)
-
-# ---------- Output ----------
-
-st.markdown("---")
-st.metric("Ideal Area (acres)", f"{ideal_area:.3f}")
-st.metric("Real Area (acres)", f"{real_area:.3f}")
-
-loss = (1 - eta_turn ** turns) * 100
-st.info(f"Total turn loss: **{loss:.2f}%** over {turns} turns")
