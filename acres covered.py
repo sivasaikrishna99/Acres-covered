@@ -100,9 +100,7 @@ A_real = A_ideal * (eta_turn ** N)
 st.subheader("📊 Results")
 
 c1, c2 = st.columns(2)
-with c1:
-    st.metric("Ideal Area (acre)", f"{A_ideal:.4f}")
-    st.metric("η_turn", f"{eta_turn:.4f}")
+
 
 with c2:
     st.metric("Actual Area (acre)", f"{A_real:.4f}")
@@ -113,3 +111,4 @@ st.caption(
     "η_turn is per-turn efficiency factor capturing all turn/edge losses.\n"
     "Adjust η_turn to match practical field observations (~1 acre)."
 )
+
