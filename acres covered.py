@@ -13,7 +13,7 @@ defaults = {
     "flow": 3.0,       # L/min
     "tank": 10.0,      # L
     "turns": 12,       # number of turns
-    "eta_turn": 0.998, # per-turn efficiency (calibrated to ~1 acre)
+    "eta_turn": 0.98, # per-turn efficiency (calibrated to ~1 acre)
 }
 
 for k, v in defaults.items():
@@ -111,4 +111,5 @@ st.caption(
     "η_turn is per-turn efficiency factor capturing all turn/edge losses.\n"
     "Adjust η_turn to match practical field observations (~1 acre)."
 )
+
 
