@@ -10,8 +10,8 @@ st.divider()
 defaults = {
     "speed": 5.0,      # m/s
     "width": 5.5,      # m
-    "flow": 3.0,       # L/min
-    "tank": 10.0,      # L
+    "flow": 3.0,       # kg/min
+    "tank": 10.0,      # kg
     "turns": 12,       # number of turns
     "eta_turn": 0.98, # per-turn efficiency (calibrated to ~1 acre)
 }
@@ -111,5 +111,6 @@ st.caption(
     "η_turn is per-turn efficiency factor capturing all turn/edge losses.\n"
     "Adjust η_turn to match practical field observations (~1 acre)."
 )
+
 
 
