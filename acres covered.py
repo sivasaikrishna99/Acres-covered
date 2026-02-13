@@ -69,7 +69,7 @@ def synced_input(label, name, minv, maxv, step, fmt=None):
 synced_input("Speed (m/s)", "speed", 0.5, 15.0, 0.1)
 synced_input("Swath width (m)", "width", 0.5, 15.0, 0.1)
 synced_input("Flow rate (kg/min)", "flow", 0.1, 20.0, 0.001, "%.4f")
-synced_input("Tank capacity (kg)", "tank", 1.0, 50.0, 0.5)
+synced_input("Total Dispense weight (kg)", "tank", 1.0, 50.0, 0.5)
 synced_input("Number of turns", "turns", 0, 200, 1)
 synced_input("η_turn (per turn)", "eta_turn", 0.95, 1.0, 0.0001, "%.4f")
 
@@ -111,6 +111,7 @@ st.caption(
     "η_turn is per-turn efficiency factor capturing all turn/edge losses.\n"
     "Adjust η_turn to match practical field observations (~1 acre)."
 )
+
 
 
 
