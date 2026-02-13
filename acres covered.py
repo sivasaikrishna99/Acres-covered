@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Agri Drone Area Calculator", layout="centered")
 st.title("🚁 Agricultural Drone Area Coverage Calculator")
-st.caption("Single-turn efficiency model (η_turn per turn)")
+st.caption("Single-turn efficiency model (Turn loss % per turn)")
 
 st.divider()
 
@@ -12,8 +12,8 @@ defaults = {
     "width": 5.5,      # m
     "flow": 3.0,       # kg/min
     "tank": 10.0,      # kg
-    "turns": 12,       # number of turns
-    "eta_turn": 0.98, # per-turn efficiency (calibrated to ~1 acre)
+    "turns": 12,       # number of turns (N)
+    "turn_loss": 2.0,  # % loss per turn
 }
 
 for k, v in defaults.items():
@@ -70,8 +70,8 @@ synced_input("Speed (m/s)", "speed", 0.5, 15.0, 0.1)
 synced_input("Swath width (m)", "width", 0.5, 15.0, 0.1)
 synced_input("Flow rate (kg/min)", "flow", 0.1, 20.0, 0.001, "%.4f")
 synced_input("Total Dispense weight (kg)", "tank", 1.0, 50.0, 0.5)
-synced_input("Number of turns", "turns", 0, 200, 1)
-synced_input("η_turn (per turn)", "eta_turn", 0.95, 1.0, 0.0001, "%.4f")
+synced_input("Number of turns (N)", "turns", 0, 200, 1)
+synced_input("Turn loss per turn (%)", "turn_loss", 0.0, 20.0, 0.1)
 
 st.divider()
 
@@ -83,7 +83,7 @@ w = st.session_state.width
 flow = st.session_state.flow
 tank = st.session_state.tank
 N = st.session_state.turns
-eta_turn = st.session_state.eta_turn
+turn_loss_percent = st.session_state.turn_loss
 
 # Spray time (seconds)
 t_spray = (tank / flow) * 60
@@ -91,8 +91,9 @@ t_spray = (tank / flow) * 60
 # Ideal area (acres)
 A_ideal = (v * w * t_spray) / 4046.86
 
-# Real area with single-turn efficiency
-A_real = A_ideal * (eta_turn ** N)
+# Real area using % loss per turn
+efficiency_per_turn = 1 - (turn_loss_percent / 100)
+A_real = A_ideal * (efficiency_per_turn ** N)
 
 # -----------------------
 # Output
@@ -101,19 +102,11 @@ st.subheader("📊 Results")
 
 c1, c2 = st.columns(2)
 
-
 with c2:
     st.metric("Actual Area (acre)", f"{A_real:.4f}")
 
 st.caption(
     "Model:\n"
-    "A_real = A_ideal × (η_turn ^ N)\n\n"
-    "η_turn is per-turn efficiency factor capturing all turn/edge losses.\n"
-    "Adjust η_turn to match practical field observations (~1 acre)."
+    "A_real = A_ideal × (1 - TurnLoss%) ^ N\n\n"
+    "Turn loss (%) represents area loss per turn."
 )
-
-
-
-
-
-
