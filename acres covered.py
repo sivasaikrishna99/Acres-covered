@@ -71,7 +71,7 @@ synced_input("Swath width (m)", "width", 0.5, 15.0, 0.1)
 synced_input("Flow rate (kg/min)", "flow", 0.1, 20.0, 0.001, "%.4f")
 synced_input("Total Dispense weight (kg)", "tank", 1.0, 50.0, 0.5)
 synced_input("Number of turns (N)", "turns", 0, 200, 1)
-synced_input("Turn loss per turn (%)", "turn_loss", 0.0, 20.0, 0.1)
+synced_input("Loss per turn (%)", "turn_loss", 0.0, 20.0, 0.1)
 
 st.divider()
 
@@ -110,3 +110,4 @@ st.caption(
     "A_real = A_ideal × (1 - TurnLoss%) ^ N\n\n"
     "Turn loss (%) represents area loss per turn."
 )
+
