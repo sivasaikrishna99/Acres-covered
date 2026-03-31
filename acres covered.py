@@ -105,7 +105,7 @@ with c2:
 # Spacing
 c1, c2 = st.columns([3, 1])
 with c1:
-    synced_input("Line Spacing", "spacing", 0.5, 20.0, 0.1)
+    synced_input("Line Spacing", "spacing", 0.5, 50.0, 0.1)
 with c2:
     spacing_unit = st.selectbox("   ", ["m", "ft"])
 
