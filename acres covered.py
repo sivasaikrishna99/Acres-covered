@@ -2,7 +2,7 @@ import streamlit as st
 
 st.set_page_config(page_title="Agri Drone Flow Calculator", layout="centered")
 st.title("🚁 Spray Flow Rate Calculator")
-st.caption("Supports mixed unit inputs → Output in L/min")
+st.caption("Mixed units supported • Output always in L/min")
 
 st.divider()
 
@@ -36,52 +36,81 @@ def input_changed(name):
     st.session_state[f"{name}_slider"] = val
 
 # -----------------------
-# Synced input widget
+# Safe synced input
 # -----------------------
 def synced_input(label, name, minv, maxv, step):
+    # Clamp value to avoid Streamlit crash
+    val = st.session_state.get(name, minv)
+
+    if val < minv:
+        val = minv
+    elif val > maxv:
+        val = maxv
+
+    st.session_state[name] = val
+    st.session_state[f"{name}_slider"] = val
+    st.session_state[f"{name}_input"] = val
+
     c1, c2 = st.columns([2, 1])
+
     with c1:
-        st.slider(label, minv, maxv, step, key=f"{name}_slider",
-                  on_change=slider_changed, args=(name,))
+        st.slider(
+            label,
+            min_value=minv,
+            max_value=maxv,
+            step=step,
+            value=val,
+            key=f"{name}_slider",
+            on_change=slider_changed,
+            args=(name,)
+        )
+
     with c2:
-        st.number_input(" ", minv, maxv, step,
-                        key=f"{name}_input",
-                        on_change=input_changed, args=(name,))
+        st.number_input(
+            " ",
+            min_value=minv,
+            max_value=maxv,
+            step=step,
+            value=val,
+            key=f"{name}_input",
+            on_change=input_changed,
+            args=(name,)
+        )
 
 # -----------------------
 # Inputs + Units
 # -----------------------
 
 # Liquid
-c1, c2 = st.columns([3,1])
+c1, c2 = st.columns([3, 1])
 with c1:
     synced_input("Total Liquid", "liquid", 0.1, 200.0, 0.1)
 with c2:
     liquid_unit = st.selectbox("Unit", ["L", "Gallon"])
 
 # Area
-c1, c2 = st.columns([3,1])
+c1, c2 = st.columns([3, 1])
 with c1:
     synced_input("Area", "area", 0.1, 50.0, 0.1)
 with c2:
     area_unit = st.selectbox(" ", ["Acre", "Hectare"])
 
 # Speed
-c1, c2 = st.columns([3,1])
+c1, c2 = st.columns([3, 1])
 with c1:
     synced_input("Flight Speed", "speed", 0.5, 30.0, 0.1)
 with c2:
     speed_unit = st.selectbox("  ", ["m/s", "km/h", "ft/s"])
 
 # Spacing
-c1, c2 = st.columns([3,1])
+c1, c2 = st.columns([3, 1])
 with c1:
     synced_input("Line Spacing", "spacing", 0.5, 20.0, 0.1)
 with c2:
     spacing_unit = st.selectbox("   ", ["m", "ft"])
 
 # Height
-c1, c2 = st.columns([3,1])
+c1, c2 = st.columns([3, 1])
 with c1:
     synced_input("Height", "height", 0.5, 20.0, 0.1)
 with c2:
@@ -90,19 +119,19 @@ with c2:
 st.divider()
 
 # -----------------------
-# Unit Conversions
+# Unit Conversions (to SI)
 # -----------------------
 
 # Liquid → Litres
 liquid = st.session_state.liquid
 if liquid_unit == "Gallon":
-    liquid *= 3.78541  # US gallon to L
+    liquid *= 3.78541  # US gallon
 
 # Area → m²
 area = st.session_state.area
 if area_unit == "Acre":
     area_m2 = area * 4046.86
-else:  # hectare
+else:
     area_m2 = area * 10000
 
 # Speed → m/s
