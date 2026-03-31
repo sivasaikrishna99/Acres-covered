@@ -1,19 +1,17 @@
 import streamlit as st
 
-st.set_page_config(page_title="Agri Drone Area Calculator", layout="centered")
-st.title("🚁 Agricultural Drone Area Coverage Calculator")
-st.caption("Single-turn efficiency model (Turn loss % per turn)")
+st.set_page_config(page_title="Agri Drone Flow Rate Calculator", layout="centered")
+st.title("🚁 Spray Flow Rate Calculator")
+st.caption("Based on application rate, speed, and spacing")
 
 st.divider()
 
 # Defaults
 defaults = {
+    "app_rate": 5.0,   # L/acre
     "speed": 5.0,      # m/s
-    "width": 5.5,      # m
-    "flow": 3.0,       # kg/min
-    "tank": 10.0,      # kg
-    "turns": 12,       # number of turns (N)
-    "turn_loss": 2.0,  # % loss per turn
+    "spacing": 5.5,    # m
+    "height": 2.0,     # m (not used in formula yet)
 }
 
 for k, v in defaults.items():
@@ -66,48 +64,32 @@ def synced_input(label, name, minv, maxv, step, fmt=None):
 # -----------------------
 # Inputs
 # -----------------------
-synced_input("Speed (m/s)", "speed", 0.5, 15.0, 0.1)
-synced_input("Swath width (m)", "width", 0.5, 15.0, 0.1)
-synced_input("Flow rate (kg/min)", "flow", 0.1, 20.0, 0.001, "%.4f")
-synced_input("Total Dispense weight (kg)", "tank", 1.0, 50.0, 0.5)
-synced_input("Number of turns (N)", "turns", 0, 200, 1)
-synced_input("Loss per turn (%)", "turn_loss", 0.0, 20.0, 0.1)
+synced_input("Application rate (L/acre)", "app_rate", 0.1, 50.0, 0.1)
+synced_input("Flight speed (m/s)", "speed", 0.5, 15.0, 0.1)
+synced_input("Line spacing (m)", "spacing", 0.5, 15.0, 0.1)
+synced_input("Height (m)", "height", 0.5, 10.0, 0.1)
 
 st.divider()
 
 # -----------------------
-# Calculations
+# Calculation
 # -----------------------
+R = st.session_state.app_rate
 v = st.session_state.speed
-w = st.session_state.width
-flow = st.session_state.flow
-tank = st.session_state.tank
-N = st.session_state.turns
-turn_loss_percent = st.session_state.turn_loss
+S = st.session_state.spacing
 
-# Spray time (seconds)
-t_spray = (tank / flow) * 60
-
-# Ideal area (acres)
-A_ideal = (v * w * t_spray) / 4046.86
-
-# Real area using % loss per turn
-efficiency_per_turn = 1 - (turn_loss_percent / 100)
-A_real = A_ideal * (efficiency_per_turn ** N)
+# Flow rate (L/min ≈ kg/min)
+flow_rate = (R * v * S * 60) / 4046.86
 
 # -----------------------
 # Output
 # -----------------------
-st.subheader("📊 Results")
+st.subheader("📊 Result")
 
-c1, c2 = st.columns(2)
-
-with c2:
-    st.metric("Actual Area (acre)", f"{A_real:.4f}")
+st.metric("Required Flow Rate (kg/min)", f"{flow_rate:.4f}")
 
 st.caption(
-    "Model:\n"
-    "A_real = A_ideal × (1 - TurnLoss%) ^ N\n\n"
-    "Turn loss (%) represents area loss per turn."
+    "Formula:\n"
+    "Flow = (Application Rate × Speed × Line Spacing × 60) / 4046.86\n\n"
+    "Assuming 1 L ≈ 1 kg"
 )
-
