@@ -167,10 +167,14 @@ flow_rate = (app_rate * speed * spacing * 60) / 4046.86
 # -----------------------
 st.subheader("📊 Results")
 
+flow_rate_gal = flow_rate * 0.264172,
 c1, c2 = st.columns(2)
 
 with c1:
     st.metric("Flow Rate (L/min)", f"{flow_rate:.4f}")
+
+with c2:
+    st.metric("Flow Rate (Gal/min)", f"{flow_rate_gal:.4f}")
 
 st.caption(
     "All inputs converted internally to SI units.\n"
