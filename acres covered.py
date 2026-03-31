@@ -2,16 +2,19 @@ import streamlit as st
 
 st.set_page_config(page_title="Agri Drone Flow Rate Calculator", layout="centered")
 st.title("🚁 Spray Flow Rate Calculator")
-st.caption("Based on application rate, speed, and spacing")
+st.caption("Calculate required flow rate from field inputs")
 
 st.divider()
 
+# -----------------------
 # Defaults
+# -----------------------
 defaults = {
-    "app_rate": 5.0,   # L/acre
-    "speed": 5.0,      # m/s
-    "spacing": 5.5,    # m
-    "height": 2.0,     # m (not used in formula yet)
+    "litres": 10.0,
+    "acres": 1.0,
+    "speed": 5.0,
+    "spacing": 5.5,
+    "height": 2.0,
 }
 
 for k, v in defaults.items():
@@ -64,7 +67,8 @@ def synced_input(label, name, minv, maxv, step, fmt=None):
 # -----------------------
 # Inputs
 # -----------------------
-synced_input("Application rate (L/acre)", "app_rate", 0.1, 50.0, 0.1)
+synced_input("Total Liquid (L)", "litres", 0.1, 100.0, 0.1)
+synced_input("Area to Cover (acre)", "acres", 0.1, 20.0, 0.1)
 synced_input("Flight speed (m/s)", "speed", 0.5, 15.0, 0.1)
 synced_input("Line spacing (m)", "spacing", 0.5, 15.0, 0.1)
 synced_input("Height (m)", "height", 0.5, 10.0, 0.1)
@@ -72,24 +76,38 @@ synced_input("Height (m)", "height", 0.5, 10.0, 0.1)
 st.divider()
 
 # -----------------------
-# Calculation
+# Calculations
 # -----------------------
-R = st.session_state.app_rate
+litres = st.session_state.litres
+acres = st.session_state.acres
 v = st.session_state.speed
 S = st.session_state.spacing
 
+# Avoid division error
+if acres > 0:
+    app_rate = litres / acres  # L/acre
+else:
+    app_rate = 0
+
 # Flow rate (L/min ≈ kg/min)
-flow_rate = (R * v * S * 60) / 4046.86
+flow_rate = (app_rate * v * S * 60) / 4046.86
 
 # -----------------------
 # Output
 # -----------------------
-st.subheader("📊 Result")
+st.subheader("📊 Results")
 
-st.metric("Required Flow Rate (kg/min)", f"{flow_rate:.4f}")
+c1, c2 = st.columns(2)
+
+with c1:
+    st.metric("Application Rate (L/acre)", f"{app_rate:.2f}")
+
+with c2:
+    st.metric("Required Flow Rate (kg/min)", f"{flow_rate:.4f}")
 
 st.caption(
     "Formula:\n"
+    "Application Rate = Litres / Acres\n"
     "Flow = (Application Rate × Speed × Line Spacing × 60) / 4046.86\n\n"
     "Assuming 1 L ≈ 1 kg"
 )
