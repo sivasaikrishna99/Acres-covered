@@ -100,9 +100,6 @@ st.subheader("📊 Results")
 c1, c2 = st.columns(2)
 
 with c1:
-    st.metric("Application Rate (L/acre)", f"{app_rate:.2f}")
-
-with c2:
     st.metric("Required Flow Rate (kg/min)", f"{flow_rate:.4f}")
 
 st.caption(
