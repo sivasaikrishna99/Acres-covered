@@ -1,8 +1,8 @@
 import streamlit as st
 
-st.set_page_config(page_title="Agri Drone Flow Rate Calculator", layout="centered")
+st.set_page_config(page_title="Agri Drone Flow Calculator", layout="centered")
 st.title("🚁 Spray Flow Rate Calculator")
-st.caption("Calculate required flow rate from field inputs")
+st.caption("Supports mixed unit inputs → Output in L/min")
 
 st.divider()
 
@@ -10,8 +10,8 @@ st.divider()
 # Defaults
 # -----------------------
 defaults = {
-    "litres": 10.0,
-    "acres": 1.0,
+    "liquid": 10.0,
+    "area": 1.0,
     "speed": 5.0,
     "spacing": 5.5,
     "height": 2.0,
@@ -38,59 +38,100 @@ def input_changed(name):
 # -----------------------
 # Synced input widget
 # -----------------------
-def synced_input(label, name, minv, maxv, step, fmt=None):
+def synced_input(label, name, minv, maxv, step):
     c1, c2 = st.columns([2, 1])
     with c1:
-        st.slider(
-            label,
-            min_value=minv,
-            max_value=maxv,
-            step=step,
-            value=st.session_state[name],
-            key=f"{name}_slider",
-            on_change=slider_changed,
-            args=(name,)
-        )
+        st.slider(label, minv, maxv, step, key=f"{name}_slider",
+                  on_change=slider_changed, args=(name,))
     with c2:
-        st.number_input(
-            " ",
-            min_value=minv,
-            max_value=maxv,
-            step=step,
-            format=fmt,
-            value=st.session_state[name],
-            key=f"{name}_input",
-            on_change=input_changed,
-            args=(name,)
-        )
+        st.number_input(" ", minv, maxv, step,
+                        key=f"{name}_input",
+                        on_change=input_changed, args=(name,))
 
 # -----------------------
-# Inputs
+# Inputs + Units
 # -----------------------
-synced_input("Total Liquid (L)", "litres", 0.1, 100.0, 0.1)
-synced_input("Area to Cover (acre)", "acres", 0.1, 20.0, 0.1)
-synced_input("Flight speed (m/s)", "speed", 0.5, 15.0, 0.1)
-synced_input("Line spacing (m)", "spacing", 0.5, 15.0, 0.1)
-synced_input("Height (m)", "height", 0.5, 10.0, 0.1)
+
+# Liquid
+c1, c2 = st.columns([3,1])
+with c1:
+    synced_input("Total Liquid", "liquid", 0.1, 200.0, 0.1)
+with c2:
+    liquid_unit = st.selectbox("Unit", ["L", "Gallon"])
+
+# Area
+c1, c2 = st.columns([3,1])
+with c1:
+    synced_input("Area", "area", 0.1, 50.0, 0.1)
+with c2:
+    area_unit = st.selectbox(" ", ["Acre", "Hectare"])
+
+# Speed
+c1, c2 = st.columns([3,1])
+with c1:
+    synced_input("Flight Speed", "speed", 0.5, 30.0, 0.1)
+with c2:
+    speed_unit = st.selectbox("  ", ["m/s", "km/h", "ft/s"])
+
+# Spacing
+c1, c2 = st.columns([3,1])
+with c1:
+    synced_input("Line Spacing", "spacing", 0.5, 20.0, 0.1)
+with c2:
+    spacing_unit = st.selectbox("   ", ["m", "ft"])
+
+# Height
+c1, c2 = st.columns([3,1])
+with c1:
+    synced_input("Height", "height", 0.5, 20.0, 0.1)
+with c2:
+    height_unit = st.selectbox("    ", ["m", "ft"])
 
 st.divider()
 
 # -----------------------
+# Unit Conversions
+# -----------------------
+
+# Liquid → Litres
+liquid = st.session_state.liquid
+if liquid_unit == "Gallon":
+    liquid *= 3.78541  # US gallon to L
+
+# Area → m²
+area = st.session_state.area
+if area_unit == "Acre":
+    area_m2 = area * 4046.86
+else:  # hectare
+    area_m2 = area * 10000
+
+# Speed → m/s
+speed = st.session_state.speed
+if speed_unit == "km/h":
+    speed /= 3.6
+elif speed_unit == "ft/s":
+    speed *= 0.3048
+
+# Spacing → m
+spacing = st.session_state.spacing
+if spacing_unit == "ft":
+    spacing *= 0.3048
+
+# Height → m (not used yet)
+height = st.session_state.height
+if height_unit == "ft":
+    height *= 0.3048
+
+# -----------------------
 # Calculations
 # -----------------------
-litres = st.session_state.litres
-acres = st.session_state.acres
-v = st.session_state.speed
-S = st.session_state.spacing
 
-# Avoid division error
-if acres > 0:
-    app_rate = litres / acres  # L/acre
+if area_m2 > 0:
+    app_rate = liquid / (area_m2 / 4046.86)  # L/acre
 else:
     app_rate = 0
 
-# Flow rate (L/min ≈ kg/min)
-flow_rate = (app_rate * v * S * 60) / 4046.86
+flow_rate = (app_rate * speed * spacing * 60) / 4046.86
 
 # -----------------------
 # Output
@@ -100,11 +141,13 @@ st.subheader("📊 Results")
 c1, c2 = st.columns(2)
 
 with c1:
-    st.metric("Required Flow Rate (kg/min)", f"{flow_rate:.4f}")
+    st.metric("Application Rate (L/acre)", f"{app_rate:.2f}")
+
+with c2:
+    st.metric("Flow Rate (L/min)", f"{flow_rate:.4f}")
 
 st.caption(
-    "Formula:\n"
-    "Application Rate = Litres / Acres\n"
-    "Flow = (Application Rate × Speed × Line Spacing × 60) / 4046.86\n\n"
-    "Assuming 1 L ≈ 1 kg"
+    "All inputs converted internally to SI units.\n"
+    "Flow = (Application Rate × Speed × Spacing × 60) / 4046.86\n"
+    "Output always in L/min."
 )
